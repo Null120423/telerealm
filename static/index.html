@@ -1,0 +1,77 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TeleRealm - File CDN</title>
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>📡 TeleRealm CDN</h1>
+        <p>Upload files to Telegram cloud storage</p>
+      </header>
+
+      <div class="config-section">
+        <h3>Configuration</h3>
+        <div class="form-group">
+          <label for="botToken">Bot Token:</label>
+          <input
+            type="text"
+            id="botToken"
+            placeholder="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh" />
+        </div>
+        <div class="form-group">
+          <label for="chatId">Chat ID:</label>
+          <input type="text" id="chatId" placeholder="123456789" />
+        </div>
+        <button onclick="saveConfig()" class="btn-save">Save Config</button>
+      </div>
+
+      <div class="upload-section">
+        <div id="dropZone" class="drop-zone">
+          <div class="drop-zone-content">
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            <h3>Drag & Drop Files Here</h3>
+            <p>or</p>
+            <label for="fileInput" class="btn-select">Select Files</label>
+            <input type="file" id="fileInput" multiple hidden />
+            <p class="hint">Multiple files supported</p>
+          </div>
+        </div>
+
+        <div id="selectedFiles" class="selected-files"></div>
+
+        <button
+          id="uploadBtn"
+          class="btn-upload"
+          onclick="uploadFiles()"
+          disabled>
+          Upload Files
+        </button>
+
+        <div id="uploadProgress" class="upload-progress"></div>
+      </div>
+
+      <div id="uploadedFiles" class="uploaded-files">
+        <h3>Uploaded Files</h3>
+        <div id="filesList" class="files-list"></div>
+      </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
