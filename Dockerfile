@@ -25,7 +25,7 @@ COPY --from=builder --chown=nonroot:nonroot /app/server ./server
 COPY --from=builder --chown=nonroot:nonroot /app/static ./static
 COPY --from=builder --chown=nonroot:nonroot /app/storage ./storage
 
-ENV GIN_MODE=release
+ENV GIN_MODE=dev
 ENV MULTIPART_STORAGE_DIR=/app/storage/multipart
 
 EXPOSE 7777
