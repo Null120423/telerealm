@@ -8,6 +8,9 @@ const STORAGE_KEYS = {
   uploadedFiles: "telerealm.uploadedFiles",
 };
 
+const PAGE_LOADER_ID = "pageLoader";
+const FLOATING_UPLOAD_PROGRESS_ID = "floatingUploadProgress";
+
 let selectedFiles = [];
 let botToken = "";
 let chatId = "";
@@ -16,6 +19,7 @@ let chatId = "";
 window.onload = function () {
   hydrateSavedConfig();
 
+  initPageLoader();
   loadUploadedFiles();
   initRevealAnimation();
   initSetupGuide();
@@ -23,7 +27,190 @@ window.onload = function () {
   initSetupVideo();
   initUploadUI();
   initLocalActions();
+  initFloatingUploadProgress();
 };
+
+function initPageLoader() {
+  ensurePageLoader();
+
+  window.addEventListener("pageshow", () => {
+    hidePageLoader();
+  });
+
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const link = target.closest("a[href]");
+    if (!(link instanceof HTMLAnchorElement)) return;
+
+    if (
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      event.button !== 0 ||
+      link.target === "_blank" ||
+      link.hasAttribute("download")
+    ) {
+      return;
+    }
+
+    const href = link.getAttribute("href") || "";
+    if (
+      !href ||
+      href.startsWith("#") ||
+      href.startsWith("mailto:") ||
+      href.startsWith("tel:") ||
+      href.startsWith("javascript:")
+    ) {
+      return;
+    }
+
+    let nextURL;
+    try {
+      nextURL = new URL(link.href, window.location.href);
+    } catch (_error) {
+      return;
+    }
+
+    const samePageHashOnly =
+      nextURL.origin === window.location.origin &&
+      nextURL.pathname === window.location.pathname &&
+      nextURL.search === window.location.search &&
+      nextURL.hash;
+
+    if (samePageHashOnly) return;
+
+    if (nextURL.origin === window.location.origin) {
+      showPageLoader("Opening page...");
+    }
+  });
+}
+
+function ensurePageLoader() {
+  if (document.getElementById(PAGE_LOADER_ID)) return;
+
+  const loader = document.createElement("div");
+  loader.id = PAGE_LOADER_ID;
+  loader.className = "page-loader";
+  loader.hidden = true;
+  loader.setAttribute("aria-hidden", "true");
+  loader.innerHTML = `
+    <div class="page-loader__backdrop"></div>
+    <div class="page-loader__panel" role="status" aria-live="polite">
+      <span class="page-loader__spinner" aria-hidden="true"></span>
+      <div>
+        <strong>TeleRealm</strong>
+        <p id="pageLoaderMessage">Loading page...</p>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(loader);
+}
+
+function showPageLoader(message = "Loading page...") {
+  const loader = document.getElementById(PAGE_LOADER_ID);
+  const messageNode = document.getElementById("pageLoaderMessage");
+
+  if (!loader) return;
+
+  if (messageNode) {
+    messageNode.textContent = message;
+  }
+
+  loader.hidden = false;
+  loader.setAttribute("aria-hidden", "false");
+  document.body.classList.add("is-page-loading");
+}
+
+function hidePageLoader() {
+  const loader = document.getElementById(PAGE_LOADER_ID);
+  if (!loader) return;
+
+  loader.hidden = true;
+  loader.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-page-loading");
+}
+
+function initFloatingUploadProgress() {
+  ensureFloatingUploadProgress();
+  resetFloatingUploadProgress();
+}
+
+function ensureFloatingUploadProgress() {
+  if (document.getElementById(FLOATING_UPLOAD_PROGRESS_ID)) return;
+
+  const widget = document.createElement("aside");
+  widget.id = FLOATING_UPLOAD_PROGRESS_ID;
+  widget.className = "floating-upload-progress";
+  widget.hidden = true;
+  widget.setAttribute("aria-live", "polite");
+  widget.innerHTML = `
+    <div class="floating-upload-progress__header">
+      <strong>Upload Progress</strong>
+      <span id="floatingUploadPercent">0%</span>
+    </div>
+    <p id="floatingUploadFile">Waiting for upload...</p>
+    <div class="floating-upload-progress__bar">
+      <div id="floatingUploadBar" class="floating-upload-progress__fill"></div>
+    </div>
+    <small id="floatingUploadMeta">0 / 0 files completed</small>
+  `;
+
+  document.body.appendChild(widget);
+}
+
+function updateFloatingUploadProgress({
+  visible = true,
+  fileName = "Waiting for upload...",
+  percent = 0,
+  completed = 0,
+  total = 0,
+}) {
+  const widget = document.getElementById(FLOATING_UPLOAD_PROGRESS_ID);
+  const percentNode = document.getElementById("floatingUploadPercent");
+  const fileNode = document.getElementById("floatingUploadFile");
+  const barNode = document.getElementById("floatingUploadBar");
+  const metaNode = document.getElementById("floatingUploadMeta");
+
+  if (!widget || !percentNode || !fileNode || !barNode || !metaNode) return;
+
+  const safePercent = Math.max(0, Math.min(100, Math.round(percent)));
+
+  widget.hidden = !visible;
+  percentNode.textContent = `${safePercent}%`;
+  fileNode.textContent = fileName;
+  barNode.style.width = `${safePercent}%`;
+  metaNode.textContent = `${completed} / ${total} files completed`;
+}
+
+function resetFloatingUploadProgress() {
+  updateFloatingUploadProgress({
+    visible: false,
+    fileName: "Waiting for upload...",
+    percent: 0,
+    completed: 0,
+    total: 0,
+  });
+}
+
+function syncConfigFromInputs(persist = false) {
+  const botTokenInput = document.getElementById("botToken");
+  const chatIdInput = document.getElementById("chatId");
+
+  if (!botTokenInput || !chatIdInput) return;
+
+  botToken = botTokenInput.value.trim();
+  chatId = chatIdInput.value.trim();
+
+  if (persist && botToken && chatId) {
+    localStorage.setItem(STORAGE_KEYS.botToken, botToken);
+    localStorage.setItem(STORAGE_KEYS.chatId, chatId);
+  }
+}
 
 function initSetupVideo() {
   const videoFab = document.getElementById("setupVideoFab");
@@ -253,21 +440,12 @@ function initLocalNotice() {
 
 // Save configuration
 function saveConfig() {
-  const botTokenInput = document.getElementById("botToken");
-  const chatIdInput = document.getElementById("chatId");
-
-  if (!botTokenInput || !chatIdInput) return;
-
-  botToken = botTokenInput.value.trim();
-  chatId = chatIdInput.value.trim();
+  syncConfigFromInputs(true);
 
   if (!botToken || !chatId) {
     showNotification("Please enter both Bot Token and Chat ID", "error");
     return;
   }
-
-  localStorage.setItem(STORAGE_KEYS.botToken, botToken);
-  localStorage.setItem(STORAGE_KEYS.chatId, chatId);
 
   showNotification("Configuration saved successfully!", "success");
 }
@@ -330,6 +508,8 @@ function updateUploadButton() {
 
 // Upload files
 async function uploadFiles() {
+  syncConfigFromInputs();
+
   if (!botToken || !chatId) {
     showNotification("Please configure Bot Token and Chat ID first", "error");
     return;
@@ -349,6 +529,17 @@ async function uploadFiles() {
   uploadBtn.textContent = "Uploading...";
   progressContainer.innerHTML = "";
 
+  const totalFiles = selectedFiles.length;
+  let completedFiles = 0;
+
+  updateFloatingUploadProgress({
+    visible: true,
+    fileName: "Preparing uploads...",
+    percent: 0,
+    completed: completedFiles,
+    total: totalFiles,
+  });
+
   for (let i = 0; i < selectedFiles.length; i++) {
     const file = selectedFiles[i];
 
@@ -364,7 +555,17 @@ async function uploadFiles() {
     progressContainer.appendChild(progressItem);
 
     try {
-      const result = await uploadFile(file, progressItem);
+      const result = await uploadFile(file, progressItem, (filePercent) => {
+        const overallPercent = ((i + filePercent / 100) / totalFiles) * 100;
+
+        updateFloatingUploadProgress({
+          visible: true,
+          fileName: `Uploading ${file.name}`,
+          percent: overallPercent,
+          completed: completedFiles,
+          total: totalFiles,
+        });
+      });
       const payload = result.data || {};
 
       // Save to localStorage
@@ -378,8 +579,23 @@ async function uploadFiles() {
 
       // Update progress to 100%
       progressItem.querySelector(".progress-fill").style.width = "100%";
+      completedFiles += 1;
+      updateFloatingUploadProgress({
+        visible: true,
+        fileName: `${file.name} uploaded`,
+        percent: (completedFiles / totalFiles) * 100,
+        completed: completedFiles,
+        total: totalFiles,
+      });
     } catch (error) {
       progressItem.innerHTML += `<div class="error-message">Failed: ${error.message}</div>`;
+      updateFloatingUploadProgress({
+        visible: true,
+        fileName: `Failed: ${file.name}`,
+        percent: (completedFiles / totalFiles) * 100,
+        completed: completedFiles,
+        total: totalFiles,
+      });
     }
   }
 
@@ -392,28 +608,81 @@ async function uploadFiles() {
   // Reload uploaded files list
   loadUploadedFiles();
 
+  setTimeout(() => {
+    resetFloatingUploadProgress();
+  }, 1800);
+
   showNotification("Upload completed!", "success");
 }
 
 // Upload single file
-async function uploadFile(file, progressItem) {
-  const formData = new FormData();
-  formData.append("chat_id", chatId);
-  formData.append("document", file);
+async function uploadFile(file, progressItem, onProgress) {
+  const progressFill = progressItem.querySelector(".progress-fill");
 
-  const response = await fetch("/send", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${botToken}`,
-    },
-    body: formData,
+  return await new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append("chat_id", chatId);
+    formData.append("document", file);
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", "/send");
+    xhr.setRequestHeader("Authorization", `Bearer ${botToken}`);
+    xhr.responseType = "json";
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) return;
+
+      const percent = (event.loaded / event.total) * 100;
+      if (progressFill) {
+        progressFill.style.width = `${percent}%`;
+      }
+
+      if (typeof onProgress === "function") {
+        onProgress(percent);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      const payload = xhr.response || safeParseJSON(xhr.responseText);
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (progressFill) {
+          progressFill.style.width = "100%";
+        }
+
+        if (typeof onProgress === "function") {
+          onProgress(100);
+        }
+
+        resolve(payload);
+        return;
+      }
+
+      reject(new Error(payload?.message || payload?.error || "Upload failed"));
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error while uploading file"));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Upload aborted"));
+    });
+
+    xhr.send(formData);
   });
+}
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || "Upload failed");
+function safeParseJSON(value) {
+  if (!value || typeof value !== "string") {
+    return null;
   }
-  return await response.json();
+
+  try {
+    return JSON.parse(value);
+  } catch (_error) {
+    return null;
+  }
 }
 
 // Save uploaded file to localStorage

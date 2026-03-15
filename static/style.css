@@ -1435,3 +1435,126 @@ h2 {
     flex-direction: column;
   }
 }
+
+.page-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+}
+
+.page-loader[hidden] {
+  display: none;
+}
+
+.page-loader__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 22, 58, 0.48);
+  backdrop-filter: blur(10px);
+}
+
+.page-loader__panel {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: min(92vw, 320px);
+  padding: 20px 22px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 60px rgba(17, 34, 68, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.page-loader__panel strong,
+.floating-upload-progress__header strong {
+  display: block;
+  font-size: 0.98rem;
+  color: var(--text-color);
+}
+
+.page-loader__panel p,
+.floating-upload-progress p,
+.floating-upload-progress small {
+  margin: 4px 0 0;
+}
+
+.page-loader__spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(31, 79, 216, 0.18);
+  border-top-color: #1f4fd8;
+  animation: spin-loader 0.8s linear infinite;
+}
+
+.floating-upload-progress {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1400;
+  width: min(360px, calc(100vw - 32px));
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  box-shadow: 0 24px 56px rgba(17, 34, 68, 0.22);
+  backdrop-filter: blur(14px);
+}
+
+.floating-upload-progress[hidden] {
+  display: none;
+}
+
+.floating-upload-progress__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.floating-upload-progress__header span {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1f4fd8;
+}
+
+.floating-upload-progress__bar {
+  overflow: hidden;
+  height: 10px;
+  margin-top: 14px;
+  border-radius: 999px;
+  background: rgba(31, 79, 216, 0.12);
+}
+
+.floating-upload-progress__fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1f4fd8, #2d8cff);
+  transition: width 0.18s ease;
+}
+
+.is-page-loading {
+  cursor: progress;
+}
+
+@keyframes spin-loader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .floating-upload-progress {
+    right: 16px;
+    bottom: 16px;
+    width: calc(100vw - 24px);
+  }
+
+  .page-loader__panel {
+    min-width: calc(100vw - 24px);
+  }
+}
