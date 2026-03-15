@@ -215,61 +215,97 @@ function syncConfigFromInputs(persist = false) {
   }
 }
 
+function showVideoOrError(video, errorDiv) {
+  if (!video || !errorDiv) return;
+  video.style.display = "block";
+  errorDiv.style.display = "none";
+  video.addEventListener(
+    "error",
+    () => {
+      video.style.display = "none";
+      errorDiv.style.display = "flex";
+    },
+    { once: true },
+  );
+  video.querySelector("source")?.addEventListener(
+    "error",
+    () => {
+      video.style.display = "none";
+      errorDiv.style.display = "flex";
+    },
+    { once: true },
+  );
+}
+
+function retryVideo(videoId, errorId) {
+  const video = document.getElementById(videoId);
+  const errorDiv = document.getElementById(errorId);
+  if (!video || !errorDiv) return;
+  errorDiv.style.display = "none";
+  video.style.display = "block";
+  video.load();
+  video.addEventListener(
+    "error",
+    () => {
+      video.style.display = "none";
+      errorDiv.style.display = "flex";
+    },
+    { once: true },
+  );
+  video.querySelector("source")?.addEventListener(
+    "error",
+    () => {
+      video.style.display = "none";
+      errorDiv.style.display = "flex";
+    },
+    { once: true },
+  );
+}
+
 function initSetupVideo() {
   const videoFab = document.getElementById("setupVideoFab");
   const videoModal = document.getElementById("setupVideoModal");
   const videoClose = document.getElementById("setupVideoClose");
   const videoFrame = document.getElementById("setupVideoFrame");
-  const videoPlaceholder = document.getElementById("setupVideoPlaceholder");
+  const videoError = document.getElementById("setupVideoError");
   const inlineVideoFrame = document.getElementById("setupVideoInlineFrame");
-  const inlineVideoPlaceholder = document.getElementById(
-    "setupVideoInlinePlaceholder",
-  );
+  const inlineVideoError = document.getElementById("setupVideoInlineError");
 
-  if (
-    !videoFab ||
-    !videoModal ||
-    !videoClose ||
-    !videoFrame ||
-    !videoPlaceholder
-  ) {
-    return;
-  }
+  if (!videoFab || !videoModal || !videoClose || !videoFrame) return;
 
-  const videoURL = videoFab.dataset.videoUrl?.trim() || "";
-
-  if (inlineVideoFrame && inlineVideoPlaceholder) {
-    if (videoURL) {
-      inlineVideoPlaceholder.hidden = true;
-      inlineVideoFrame.hidden = false;
-      inlineVideoFrame.src = videoURL;
-    } else {
-      inlineVideoFrame.hidden = true;
-      inlineVideoPlaceholder.hidden = false;
-    }
+  // Lazy-load inline video only when it scrolls into view
+  if (inlineVideoFrame instanceof HTMLVideoElement) {
+    const observer = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            showVideoOrError(inlineVideoFrame, inlineVideoError);
+            inlineVideoFrame.load();
+            obs.disconnect();
+          }
+        });
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(inlineVideoFrame);
   }
 
   const closeVideo = () => {
     videoModal.hidden = true;
     document.body.style.overflow = "";
-    if (videoFrame instanceof HTMLIFrameElement) {
-      videoFrame.src = "";
+    if (videoFrame instanceof HTMLVideoElement) {
+      videoFrame.pause();
+      videoFrame.currentTime = 0;
     }
   };
 
   const openVideo = () => {
     videoModal.hidden = false;
     document.body.style.overflow = "hidden";
-
-    if (videoURL) {
-      videoPlaceholder.hidden = true;
-      videoFrame.hidden = false;
-      videoFrame.src = videoURL;
-      return;
+    if (videoFrame instanceof HTMLVideoElement && videoFrame.readyState === 0) {
+      showVideoOrError(videoFrame, videoError);
+      videoFrame.load();
     }
-
-    videoFrame.hidden = true;
-    videoPlaceholder.hidden = false;
   };
 
   videoFab.addEventListener("click", openVideo);
