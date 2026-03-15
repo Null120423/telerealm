@@ -1,33 +1,31 @@
-ARG BUILDPLATFORM=linux/amd64
-FROM --platform=$BUILDPLATFORM golang:1.23.7-alpine3.21 AS builder
-
-ARG TARGETOS
-ARG TARGETARCH
+# Stage 1: Build Go app
+FROM golang:1.22 AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata
-
+# copy go mod để cache
 COPY go.mod go.sum ./
 RUN go mod download
 
+# copy source code
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
-	go build -trimpath -ldflags="-s -w" -o /app/server ./main.go
+# build binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app
 
-RUN mkdir -p /app/storage/multipart/sessions /app/storage/multipart/files
-
-FROM gcr.io/distroless/static-debian12:nonroot
+# Stage 2: Ubuntu 22.04 runtime
+FROM ubuntu:22.04
 
 WORKDIR /app
 
-COPY --from=builder --chown=nonroot:nonroot /app/server ./server
-COPY --from=builder --chown=nonroot:nonroot /app/static ./static
-COPY --from=builder --chown=nonroot:nonroot /app/storage ./storage
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+# cài cert để https hoạt động
+RUN apt update && apt install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
+# copy binary
+COPY --from=builder /app/app .
 
+# expose port
 EXPOSE 7777
 
-CMD ["./server"]
+# run app
+CMD ["./app"]
