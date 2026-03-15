@@ -61,7 +61,7 @@ jobs:
                 docker images --filter=reference=${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }} --quiet | xargs -r docker rmi -f
             fi
             docker pull ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:${{ secrets.TAG_NAME }}_${{ github.sha }}
-            docker run -d -p 3003:3000 --name ${{ secrets.IMAGE_NAME }} --restart always  ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:${{ secrets.TAG_NAME }}_${{ github.sha }}
+            docker run -d -p 7777:7777 --name ${{ secrets.IMAGE_NAME }} --restart always  ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:${{ secrets.TAG_NAME }}_${{ github.sha }}
           EOF
       - name: Run custom config script on server
         env:
