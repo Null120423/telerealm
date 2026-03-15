@@ -1,31 +1,36 @@
-# Stage 1: Build Go app
-FROM golang:1.23.7 AS builder
+ARG BUILDPLATFORM=linux/amd64
+FROM --platform=$BUILDPLATFORM golang:1.23.7-alpine3.21 AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
-# copy go mod để cache
+RUN apk add --no-cache ca-certificates tzdata
+
 COPY go.mod go.sum ./
 RUN go mod download
 
-# copy source code
 COPY . .
 
-# build binary
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
+	go build -trimpath -ldflags="-s -w" -o /app/server ./main.go
 
-# Stage 2: Ubuntu 22.04 runtime
-FROM ubuntu:22.04
+RUN mkdir -p /app/storage/multipart/sessions /app/storage/multipart/files
+
+FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /app
 
-# cài cert để https hoạt động
-RUN apt update && apt install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder --chown=nonroot:nonroot /app/server ./server
+COPY --from=builder --chown=nonroot:nonroot /app/static ./static
+COPY --from=builder --chown=nonroot:nonroot /app/storage ./storage
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 
-# copy binary
-COPY --from=builder /app/app .
+ENV GIN_MODE=release
+ENV TELEGRAM_MAX_UPLOAD_MB=1204
+ENV MULTIPART_STORAGE_DIR=/app/storage/multipart
 
-# expose port
 EXPOSE 7777
 
-# run app
-CMD ["./app"]
+CMD ["./server"]
