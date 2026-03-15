@@ -1,146 +1,136 @@
-# telerealm 📡
+# TeleRealm CDN
 
-A lightweight Content Delivery Network (CDN) that leverages the Telegram Bot API for file storage and retrieval.
+TeleRealm is a lightweight CDN-style file service built on top of Telegram Bot API storage. You can upload files, generate secure shareable links, manage upload records, and use either protected APIs or path-based public integration.
 
 ## Overview
 
-telerealm provides a cost-effective solution for hosting files and serving them via a CDN-like infrastructure using Telegram's robust backend. This project is perfect for those looking for an affordable way to store and retrieve files without managing complex infrastructure.
+This version includes:
 
-![image](https://github.com/user-attachments/assets/eb82385e-5eeb-4770-8951-2424841db4f4)
+- Dedicated upload workspace page
+- Public API integration pages and docs
+- CRUD record APIs for uploaded files
+- Secure download links via encrypted drive key
+- Docker-ready deployment setup
 
-**Author:** Lai Chi Thinh (ThinhPhoenix) - FPT University
+## Attribution And Rights
 
-## Features
+Original project foundation and core idea:
 
-- **File Upload**: Upload files to Telegram Bot API and receive a unique file URL for accessing the content
-- **File Metadata Retrieval**: Retrieve file URLs and metadata (such as file size) using dedicated API endpoints
-- **CORS Support**: Seamless integration with web applications through Cross-Origin Resource Sharing configuration
-- **Secure File Download**: Generate secure, unique URLs for file downloads with automatic expiration
-- **Bot and Chat Verification**: Verify bot and chat information to ensure proper configuration
+- Lai Chi Thinh (ThinhPhoenix) - FPT University
 
-## Advantages
+Current version note:
 
-### Pros ✅
+- Additional features, API flows, and UI pages were extended and rewired in this iteration.
 
-- **Unlimited Storage**: Utilizes Telegram's cloud storage for files, offering virtually unlimited capacity
-- **Easy to Use**: Integration with Telegram Bot API simplifies file upload and retrieval operations
-- **Free**: No additional cost for storage or bandwidth usage beyond what Telegram charges for bot API usage
+## Main Features
 
-### Cons ⚠️
+- Telegram-backed file upload and retrieval
+- Secure download route via /drive/:key
+- Protected API with bearer bot token
+- Public CRUD API by URL scope: /link/:botToken/:chatID
+- Browser upload workspace with local temporary config/history
+- Public pages:
+  - /upload
+  - /public-api
+  - /demo
+  - /docs
 
-- **Automatic Removal**: Files may be removed if Telegram considers them inactive for a prolonged period due to privacy policies and storage management
+## Route Map
 
-## Getting Started
+### Public Routes
+
+- GET /
+- GET /upload
+- GET /public-api
+- GET /demo
+- GET /docs
+- GET /ping
+- GET /drive/:key
+
+### Public Path-Based API
+
+- POST /link/:botToken/:chatID
+- GET /link/:botToken/:chatID
+- GET /link/:botToken/:chatID/:id
+- PATCH /link/:botToken/:chatID/:id
+- DELETE /link/:botToken/:chatID/:id
+
+### Protected API (Authorization: Bearer <bot_token>)
+
+- POST /send
+- POST /files
+- GET /files
+- GET /files/:id
+- PATCH /files/:id
+- DELETE /files/:id
+- GET /url?file_id=...
+- GET /info?file_id=...
+- GET /verify?chat_id=...
+
+## Quick Start (Local)
 
 ### Prerequisites
 
-- Go programming language (version 1.16 or later)
-- Telegram Bot API token (obtain one by creating a new bot using BotFather)
+- Go 1.23+
+- Telegram bot token from BotFather
 
-### Installation
-
-1. **Create a bot in Telegram**:
-
-   - Follow the instructions on the [Telegram Bot Features](https://core.telegram.org/bots/features) page to create a new bot and obtain your API token
-
-2. **Clone the repository**:
-
-   ```bash
-   git clone https://github.com/ThinhPhoenix/telerealm.git
-   cd telerealm
-   ```
-
-3. **Installed dependencies**:
-
-   ```bash
-   go get github.com/gin-contrib/cors
-   go get github.com/gin-gonic/gin
-   go get github.com/google/uuid
-   go get github.com/joho/godotenv
-   ```
-
-4. **Run the project**:
-   ```bash
-   go run main.go
-   ```
-
-The server will start running on http://localhost:7777 by default.
-
-## Usage
-
-### Upload a File
-
-To upload a file, send a POST request to the `/send` endpoint with the following form data:
-
-- `chat_id`: The chat ID where you want to upload the file (you can use your own chat ID or a group/channel ID)
-- `document`: The file you want to upload
-
-**Example**:
+### Run
 
 ```bash
-curl -X POST -H "Authorization: Bearer <your_bot_token>" -F "chat_id=<your_chat_id>" -F "document=@/path/to/your/file" http://localhost:7777/send
+go mod download
+go run main.go
 ```
 
-### Get File URL
+Server default: http://localhost:7777
 
-To retrieve the file URL, send a GET request to the `/url` endpoint with the following query parameters:
+## Quick Start (Docker)
 
-- `file_id`: The file ID obtained from the upload response
-
-**Example**:
+### Build and run with compose
 
 ```bash
-curl -X GET -H "Authorization: Bearer <your_bot_token>" "http://localhost:7777/url?file_id=<your_file_id>"
+docker compose build
+docker compose up -d
 ```
 
-### Retrieve File
-
-You can download the file by accessing the secure URL generated after uploading:
-
-- `/drive/:id`: Endpoint to download the file associated with `:id` (secure ID)
-
-**Example**:
+### Stop
 
 ```bash
-curl -OJL http://localhost:7777/drive/<secure_id>
+docker compose down
 ```
 
-### Get File Information
+## Example API Calls
 
-To get information about a file (including its size and URL), send a GET request to the `/info` endpoint with the following query parameters:
-
-- `file_id`: The file ID obtained from the upload response
-
-**Example**:
+### Protected upload
 
 ```bash
-curl -X GET -H "Authorization: Bearer <your_bot_token>" "http://localhost:7777/info?file_id=<your_file_id>"
+curl -X POST \
+  -H "Authorization: Bearer <bot_token>" \
+  -F "chat_id=<chat_id>" \
+  -F "document=@/path/to/file.png" \
+  http://localhost:7777/send
 ```
 
-### Verify Bot and Chat
-
-To verify bot and chat information, send a GET request to the `/verify` endpoint with the following query parameters:
-
-- `chat_id`: The chat ID where you want to verify the bot
-
-**Example**:
+### Public scoped upload
 
 ```bash
-curl -X GET -H "Authorization: Bearer <your_bot_token>" "http://localhost:7777/verify?chat_id=<your_chat_id>"
+curl -X POST \
+  -F "document=@/path/to/file.png" \
+  http://localhost:7777/link/<bot_token>/<chat_id>
 ```
 
-## Important Notes
+### Public scoped list
 
-- Replace `<your_bot_token>`, `<your_chat_id>`, `<your_file_id>`, and `<secure_id>` with actual values as per your application's requirements
-- Ensure that the Telegram Bot API token is kept secure and not exposed in client-side code
-- Files may be subject to Telegram's inactive file removal policies
+```bash
+curl http://localhost:7777/link/<bot_token>/<chat_id>
+```
 
-## Security Considerations
+## Security Notes
 
-- Keep your bot token private and secure
-- Consider implementing rate limiting for your API endpoints
-- Monitor your usage to ensure compliance with Telegram's terms of service
+- Do not expose bot tokens in untrusted frontend contexts.
+- Path-based public API includes bot token in URL, so prefer protected API in production.
+- Local browser storage on upload page is for convenience only.
+- Rotate bot token immediately if leaked.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome through pull requests.
