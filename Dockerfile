@@ -15,14 +15,18 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
 	go build -trimpath -ldflags="-s -w" -o /app/server ./main.go
 
+RUN mkdir -p /app/storage/multipart/sessions /app/storage/multipart/files
+
 FROM gcr.io/distroless/static-debian12:nonroot
 
 WORKDIR /app
 
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/static ./static
+COPY --from=builder --chown=nonroot:nonroot /app/server ./server
+COPY --from=builder --chown=nonroot:nonroot /app/static ./static
+COPY --from=builder --chown=nonroot:nonroot /app/storage ./storage
 
 ENV GIN_MODE=release
+ENV MULTIPART_STORAGE_DIR=/app/storage/multipart
 
 EXPOSE 7777
 
