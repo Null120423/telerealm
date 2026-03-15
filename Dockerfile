@@ -26,9 +26,7 @@ COPY --from=builder --chown=nonroot:nonroot /app/server ./server
 COPY --from=builder --chown=nonroot:nonroot /app/static ./static
 COPY --from=builder --chown=nonroot:nonroot /app/storage ./storage
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-ENV GIN_MODE=release
-ENV TELEGRAM_MAX_UPLOAD_MB=1204
-ENV MULTIPART_STORAGE_DIR=/app/storage/multipart
+ENV TELEGRAM_MAX_UPLOAD_MB=2048
 EXPOSE 7777
 
 CMD ["./server"]
