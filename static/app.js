@@ -702,6 +702,7 @@ async function uploadFileMultipart(file, progressFill, onProgress) {
     file_size: file.size,
     part_size: MULTIPART_CHUNK_SIZE_BYTES,
     content_type: file.type || "application/octet-stream",
+    chat_id: chatId,
   });
 
   const { response: initResponse, path: initPath } = await fetchWith404Fallback(
