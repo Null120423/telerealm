@@ -1,35 +1,28 @@
-FROM --platform=$BUILDPLATFORM golang:1.23.7-alpine3.21 AS builder
-
-ARG TARGETOS
-ARG TARGETARCH
+# Stage 1: Build Go app
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata
-
+# copy go mod trước để cache
 COPY go.mod go.sum ./
 RUN go mod download
 
+# copy source
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
-	go build -trimpath -ldflags="-s -w" -o /app/server ./main.go
+# build binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app
 
-RUN mkdir -p /app/storage/multipart/sessions /app/storage/multipart/files
+# Stage 2: chạy app
+FROM alpine:latest
 
-FROM gcr.io/distroless/static-debian12:nonroot
+WORKDIR /root/
 
-WORKDIR /app
+# copy binary từ stage builder
+COPY --from=builder /app/app .
 
-COPY --from=builder --chown=nonroot:nonroot /app/server ./server
-COPY --from=builder --chown=nonroot:nonroot /app/static ./static
-COPY --from=builder --chown=nonroot:nonroot /app/storage ./storage
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-
-ENV GIN_MODE=release
-ENV TELEGRAM_MAX_UPLOAD_MB=1204
-ENV MULTIPART_STORAGE_DIR=/app/storage/multipart
-
+# expose port
 EXPOSE 7777
 
-CMD ["./server"]
+# run app
+CMD ["./app"]
