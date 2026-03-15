@@ -10,7 +10,6 @@ services:
     environment:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-telerealm-default-encryption-key-32b}
       - GIN_MODE=${GIN_MODE:-release}
-      - MULTIPART_STORAGE_DIR=${MULTIPART_STORAGE_DIR:-/app/storage/multipart}
     volumes:
       - ./data/multipart:/app/storage/multipart
     restart: unless-stopped
