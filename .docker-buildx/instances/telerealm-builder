@@ -1,0 +1,1 @@
+{"Name":"telerealm-builder","Driver":"docker-container","Nodes":[{"Name":"telerealm-builder0","Endpoint":"desktop-linux","Platforms":null,"DriverOpts":null,"Flags":["--allow-insecure-entitlement=network.host"],"Files":null}],"Dynamic":false}
