@@ -8,6 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -19,6 +20,12 @@ type FileRepository interface {
 }
 
 type fileRepository struct{}
+
+type telegramAPIError struct {
+	Ok          bool   `json:"ok"`
+	ErrorCode   int    `json:"error_code"`
+	Description string `json:"description"`
+}
 
 func NewFileRepository() FileRepository {
 	return &fileRepository{}
@@ -63,20 +70,31 @@ func (r *fileRepository) SendDocument(botToken, chatID string, file io.Reader, f
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to read Telegram response: %v", err)
+	}
+
 	var sendDocResp struct {
-		Ok     bool `json:"ok"`
+		Ok          bool   `json:"ok"`
+		ErrorCode   int    `json:"error_code"`
+		Description string `json:"description"`
 		Result struct {
 			Document struct {
 				FileID string `json:"file_id"`
 			} `json:"document"`
 		} `json:"result"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&sendDocResp); err != nil {
+	if err := json.Unmarshal(bodyBytes, &sendDocResp); err != nil {
 		return "", fmt.Errorf("failed to decode JSON response: %v", err)
 	}
 
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("telegram sendDocument HTTP %d: %s", resp.StatusCode, buildTelegramErrorDetails(sendDocResp.ErrorCode, sendDocResp.Description, bodyBytes))
+	}
+
 	if !sendDocResp.Ok {
-		return "", fmt.Errorf("telegram API returned not ok status")
+		return "", fmt.Errorf("telegram sendDocument API error: %s", buildTelegramErrorDetails(sendDocResp.ErrorCode, sendDocResp.Description, bodyBytes))
 	}
 
 	fileID := sendDocResp.Result.Document.FileID
@@ -93,24 +111,53 @@ func (r *fileRepository) GetFileInfo(botToken, fileID string) (string, int, erro
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to read Telegram response: %v", err)
+	}
+
 	var getFileResp struct {
-		Ok     bool `json:"ok"`
+		Ok          bool   `json:"ok"`
+		ErrorCode   int    `json:"error_code"`
+		Description string `json:"description"`
 		Result struct {
 			FilePath string `json:"file_path"`
 			FileSize int    `json:"file_size"`
 		} `json:"result"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&getFileResp); err != nil {
+	if err := json.Unmarshal(bodyBytes, &getFileResp); err != nil {
 		return "", 0, fmt.Errorf("failed to decode JSON response: %v", err)
 	}
 
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", 0, fmt.Errorf("telegram getFile HTTP %d: %s", resp.StatusCode, buildTelegramErrorDetails(getFileResp.ErrorCode, getFileResp.Description, bodyBytes))
+	}
+
 	if !getFileResp.Ok {
-		return "", 0, fmt.Errorf("telegram API returned not ok status: %s", resp.Status)
+		return "", 0, fmt.Errorf("telegram getFile API error: %s", buildTelegramErrorDetails(getFileResp.ErrorCode, getFileResp.Description, bodyBytes))
 	}
 
 	finalURL := fmt.Sprintf("https://api.telegram.org/file/bot%s/%s", botToken, getFileResp.Result.FilePath)
 
 	return finalURL, getFileResp.Result.FileSize, nil
+}
+
+func buildTelegramErrorDetails(errorCode int, description string, raw []byte) string {
+	rawBody := strings.TrimSpace(string(raw))
+	if len(rawBody) > 400 {
+		rawBody = rawBody[:400] + "..."
+	}
+
+	desc := strings.TrimSpace(description)
+	if desc == "" {
+		desc = "no description"
+	}
+
+	if errorCode > 0 {
+		return fmt.Sprintf("error_code=%d, description=%q, body=%q", errorCode, desc, rawBody)
+	}
+
+	return fmt.Sprintf("description=%q, body=%q", desc, rawBody)
 }
 
 func (r *fileRepository) CheckBotAndChat(botToken, chatID string) (botInfo, chatInfo interface{}, botInChat, botIsAdmin bool, err error) {

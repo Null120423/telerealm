@@ -10,6 +10,9 @@ const STORAGE_KEYS = {
 
 const PAGE_LOADER_ID = "pageLoader";
 const FLOATING_UPLOAD_PROGRESS_ID = "floatingUploadProgress";
+const MULTIPART_THRESHOLD_BYTES = 45 * 1024 * 1024;
+const MULTIPART_CHUNK_SIZE_BYTES = 8 * 1024 * 1024;
+const MULTIPART_INIT_PATHS = ["/multipart/init", "/api/multipart/init"];
 
 let selectedFiles = [];
 let botToken = "";
@@ -631,6 +634,14 @@ async function uploadFiles() {
 async function uploadFile(file, progressItem, onProgress) {
   const progressFill = progressItem.querySelector(".progress-fill");
 
+  if (file.size > MULTIPART_THRESHOLD_BYTES) {
+    return uploadFileMultipart(file, progressFill, onProgress);
+  }
+
+  return uploadFileDirect(file, progressFill, onProgress);
+}
+
+async function uploadFileDirect(file, progressFill, onProgress) {
   return await new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append("chat_id", chatId);
@@ -683,6 +694,207 @@ async function uploadFile(file, progressItem, onProgress) {
 
     xhr.send(formData);
   });
+}
+
+async function uploadFileMultipart(file, progressFill, onProgress) {
+  const initRequestBody = JSON.stringify({
+    file_name: file.name,
+    file_size: file.size,
+    part_size: MULTIPART_CHUNK_SIZE_BYTES,
+    content_type: file.type || "application/octet-stream",
+  });
+
+  const { response: initResponse, path: initPath } = await fetchWith404Fallback(
+    MULTIPART_INIT_PATHS,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${botToken}`,
+        "Content-Type": "application/json",
+      },
+      body: initRequestBody,
+    },
+  );
+
+  const initPayload = await safeReadJSON(initResponse);
+  if (!initResponse.ok) {
+    throw new Error(
+      buildHttpErrorMessage(
+        initResponse,
+        initPayload,
+        "Failed to initialize multipart upload",
+      ),
+    );
+  }
+
+  const session = initPayload?.data || {};
+  const uploadID = session.upload_id;
+  const totalParts = Number(session.total_parts || 0);
+  const multipartPrefix = initPath.startsWith("/api/") ? "/api" : "";
+
+  if (!uploadID || totalParts <= 0) {
+    throw new Error("Invalid multipart session response");
+  }
+
+  for (let partNumber = 1; partNumber <= totalParts; partNumber++) {
+    const start = (partNumber - 1) * MULTIPART_CHUNK_SIZE_BYTES;
+    const end = Math.min(start + MULTIPART_CHUNK_SIZE_BYTES, file.size);
+    const chunk = file.slice(start, end);
+
+    await uploadMultipartChunk(
+      `${multipartPrefix}/multipart/${encodeURIComponent(uploadID)}/part?part_number=${partNumber}`,
+      chunk,
+      (partPercent) => {
+        const uploadPercent =
+          ((partNumber - 1 + partPercent / 100) / totalParts) * 100;
+
+        if (progressFill) {
+          progressFill.style.width = `${uploadPercent}%`;
+        }
+
+        if (typeof onProgress === "function") {
+          onProgress(uploadPercent);
+        }
+      },
+    );
+  }
+
+  const completeResponse = await fetch(
+    `${multipartPrefix}/multipart/${encodeURIComponent(uploadID)}/complete`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${botToken}`,
+      },
+    },
+  );
+
+  const completePayload = await safeReadJSON(completeResponse);
+  if (!completeResponse.ok) {
+    throw new Error(
+      buildHttpErrorMessage(
+        completeResponse,
+        completePayload,
+        "Failed to complete multipart upload",
+      ),
+    );
+  }
+
+  if (progressFill) {
+    progressFill.style.width = "100%";
+  }
+  if (typeof onProgress === "function") {
+    onProgress(100);
+  }
+
+  return completePayload;
+}
+
+async function uploadMultipartChunk(chunkURL, chunk, onProgress) {
+  return await new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append("chunk", chunk, "part");
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", chunkURL);
+    xhr.setRequestHeader("Authorization", `Bearer ${botToken}`);
+    xhr.responseType = "json";
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) return;
+      const percent = (event.loaded / event.total) * 100;
+      if (typeof onProgress === "function") {
+        onProgress(percent);
+      }
+    });
+
+    xhr.addEventListener("load", () => {
+      const payload = xhr.response || safeParseJSON(xhr.responseText);
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(payload);
+        return;
+      }
+
+      reject(
+        new Error(buildXhrErrorMessage(xhr, payload, "Chunk upload failed")),
+      );
+    });
+
+    xhr.addEventListener("error", () => {
+      reject(new Error("Network error while uploading chunk"));
+    });
+
+    xhr.addEventListener("abort", () => {
+      reject(new Error("Chunk upload aborted"));
+    });
+
+    xhr.send(formData);
+  });
+}
+
+async function fetchWith404Fallback(paths, options) {
+  let lastResponse = null;
+
+  for (const path of paths) {
+    const response = await fetch(path, options);
+    if (response.status !== 404) {
+      return { response, path };
+    }
+    lastResponse = response;
+  }
+
+  return { response: lastResponse, path: paths[0] };
+}
+
+async function safeReadJSON(response) {
+  if (!response) return null;
+
+  try {
+    return await response.json();
+  } catch (_error) {
+    return null;
+  }
+}
+
+function buildHttpErrorMessage(response, payload, fallbackMessage) {
+  const status = response?.status;
+  const statusText = response?.statusText;
+  const detail = payload?.message || payload?.error;
+
+  if (detail && status) {
+    return `${fallbackMessage} (${status} ${statusText || ""}): ${detail}`.trim();
+  }
+
+  if (detail) {
+    return `${fallbackMessage}: ${detail}`;
+  }
+
+  if (status) {
+    return `${fallbackMessage} (${status} ${statusText || ""})`.trim();
+  }
+
+  return fallbackMessage;
+}
+
+function buildXhrErrorMessage(xhr, payload, fallbackMessage) {
+  const status = xhr?.status;
+  const statusText = xhr?.statusText;
+  const detail = payload?.message || payload?.error;
+
+  if (detail && status) {
+    return `${fallbackMessage} (${status} ${statusText || ""}): ${detail}`.trim();
+  }
+
+  if (detail) {
+    return `${fallbackMessage}: ${detail}`;
+  }
+
+  if (status) {
+    return `${fallbackMessage} (${status} ${statusText || ""})`.trim();
+  }
+
+  return fallbackMessage;
 }
 
 function safeParseJSON(value) {

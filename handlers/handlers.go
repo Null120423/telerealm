@@ -4,16 +4,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"telerealm/models"
 	"telerealm/services"
 	"telerealm/utils"
+
+	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type Handlers struct {
@@ -21,7 +25,8 @@ type Handlers struct {
 }
 
 var (
-	mu sync.Mutex // Keep this if shared mutable state is added later.
+	mu                  sync.Mutex // Keep this if shared mutable state is added later.
+	defaultMaxUploadMB             = int64(2048)
 )
 
 func NewHandlers(service services.FileService) *Handlers {
@@ -58,6 +63,10 @@ func (h *Handlers) uploadAndCreateRecord(c *gin.Context, botToken, chatID string
 		return models.FileRecord{}, http.StatusBadRequest, fmt.Errorf("document is required")
 	}
 
+	if sizeErr := validateUploadSize(fileHeader.Size); sizeErr != nil {
+		return models.FileRecord{}, http.StatusRequestEntityTooLarge, sizeErr
+	}
+
 	file, err := fileHeader.Open()
 	if err != nil {
 		return models.FileRecord{}, http.StatusInternalServerError, fmt.Errorf("failed to open file")
@@ -66,7 +75,7 @@ func (h *Handlers) uploadAndCreateRecord(c *gin.Context, botToken, chatID string
 
 	fileID, err := h.service.SendFile(botToken, chatID, file, fileHeader.Filename)
 	if err != nil {
-		return models.FileRecord{}, http.StatusInternalServerError, fmt.Errorf("failed to send document: %v", err)
+		return models.FileRecord{}, resolveSendDocumentErrorStatus(err), fmt.Errorf("failed to send document: %v", err)
 	}
 
 	fileURL, fileSize, err := h.service.GetFileInfo(botToken, fileID)
@@ -290,8 +299,14 @@ func (h *Handlers) SendFile(c *gin.Context) {
 
 	fileHeader, err := c.FormFile("document")
 	if err == nil {
+		if sizeErr := validateUploadSize(fileHeader.Size); sizeErr != nil {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": sizeErr.Error()})
+			return
+		}
+
 		file, err := fileHeader.Open()
 		if err != nil {
+			log.Printf("[send] failed to open file chat_id=%s file=%s err=%v", chatID, fileHeader.Filename, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open file"})
 			return
 		}
@@ -299,12 +314,15 @@ func (h *Handlers) SendFile(c *gin.Context) {
 
 		fileID, err = h.service.SendFile(botToken, chatID, file, fileHeader.Filename)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to send document: %v", err)})
+			log.Printf("[send] Telegram send failed chat_id=%s file=%s err=%v", chatID, fileHeader.Filename, err)
+			status := resolveSendDocumentErrorStatus(err)
+			c.JSON(status, gin.H{"error": fmt.Sprintf("Failed to send document: %v", err)})
 			return
 		}
 
 		fileURL, fileSize, err = h.service.GetFileInfo(botToken, fileID)
 		if err != nil {
+			log.Printf("[send] getFile info failed chat_id=%s file_id=%s err=%v", chatID, fileID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get file info: %v", err)})
 			return
 		}
@@ -328,10 +346,15 @@ func (h *Handlers) SendFile(c *gin.Context) {
 		fileSize = 0
 
 		isFile, contentType, contentLength, err := isURLFile(fileURL)
-		_ = contentLength
 
 		if err != nil {
+			log.Printf("[send] URL file check failed chat_id=%s url=%s err=%v", chatID, fileURL, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to check URL: %v", err)})
+			return
+		}
+
+		if sizeErr := validateUploadSize(contentLength); sizeErr != nil {
+			c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": sizeErr.Error()})
 			return
 		}
 
@@ -350,6 +373,7 @@ func (h *Handlers) SendFile(c *gin.Context) {
 
 	encryptedToken, err := utils.EncryptFileInfo(botToken, fileID)
 	if err != nil {
+		log.Printf("[send] secure URL encryption failed chat_id=%s file_id=%s err=%v", chatID, fileID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create secure URL"})
 		return
 	}
@@ -581,6 +605,50 @@ func isURLFile(url string) (bool, string, int64, error) {
 		strings.HasPrefix(contentType, "audio/")
 
 	return isFile, contentType, contentLength, nil
+}
+
+func getMaxUploadBytes() int64 {
+	raw := strings.TrimSpace(os.Getenv("TELEGRAM_MAX_UPLOAD_MB"))
+	if raw == "" {
+		return defaultMaxUploadMB * 1024 * 1024
+	}
+
+	mb, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || mb <= 0 {
+		return defaultMaxUploadMB * 1024 * 1024
+	}
+
+	return mb * 1024 * 1024
+}
+
+func validateUploadSize(size int64) error {
+	if size <= 0 {
+		return nil
+	}
+
+	maxBytes := getMaxUploadBytes()
+	if size <= maxBytes {
+		return nil
+	}
+
+	maxMB := maxBytes / (1024 * 1024)
+	actualMB := float64(size) / 1024.0 / 1024.0
+	return fmt.Errorf("file is too large (%.2f MB). Current limit is %d MB. Reduce file size or set TELEGRAM_MAX_UPLOAD_MB if your Telegram endpoint supports larger uploads", actualMB, maxMB)
+}
+
+func resolveSendDocumentErrorStatus(err error) int {
+	if err == nil {
+		return http.StatusInternalServerError
+	}
+
+	msg := strings.ToLower(err.Error())
+	if strings.Contains(msg, "http 413") ||
+		strings.Contains(msg, "error_code=413") ||
+		strings.Contains(msg, "request entity too large") {
+		return http.StatusRequestEntityTooLarge
+	}
+
+	return http.StatusInternalServerError
 }
 
 func (h *Handlers) CheckBotAndChat(c *gin.Context) {

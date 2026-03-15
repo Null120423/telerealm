@@ -26,6 +26,7 @@ func main() {
 	// Public endpoints
 	r.GET("/ping", h.Ping)
 	r.GET("/drive/:key", h.DownloadFile)
+	r.GET("/multipart/download/:key", h.DownloadMultipartFile)
 	r.GET("/", func(c *gin.Context) {
 		c.File("static/index.html")
 	})
@@ -62,6 +63,9 @@ func main() {
 	auth.Use(middleware.AuthRequired())
 	{
 		auth.POST("/send", h.SendFile)
+		auth.POST("/multipart/init", h.InitMultipartUpload)
+		auth.POST("/multipart/:uploadID/part", h.UploadMultipartPart)
+		auth.POST("/multipart/:uploadID/complete", h.CompleteMultipartUpload)
 		auth.POST("/files", h.CreateFileRecord)
 		auth.GET("/files", h.ListFileRecords)
 		auth.GET("/files/:id", h.GetFileRecord)
@@ -70,6 +74,14 @@ func main() {
 		auth.GET("/url", h.GetFileURL)
 		auth.GET("/info", h.GetFileInfo)
 		auth.GET("/verify", h.CheckBotAndChat)
+	}
+
+	apiAuth := r.Group("/api")
+	apiAuth.Use(middleware.AuthRequired())
+	{
+		apiAuth.POST("/multipart/init", h.InitMultipartUpload)
+		apiAuth.POST("/multipart/:uploadID/part", h.UploadMultipartPart)
+		apiAuth.POST("/multipart/:uploadID/complete", h.CompleteMultipartUpload)
 	}
 
 	r.Run(":7777")
