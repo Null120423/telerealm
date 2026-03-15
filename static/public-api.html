@@ -1,0 +1,96 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TeleRealm Public API</title>
+    <link rel="stylesheet" href="/static/style.css?v=20260315" />
+  </head>
+  <body>
+    <div class="page-bg"></div>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a href="/" class="brand">TeleRealm</a>
+        <nav class="main-nav">
+          <a href="/upload">Upload</a>
+          <a href="/demo">Demo</a>
+          <a href="/docs">Docs</a>
+        </nav>
+        <a href="/docs" class="nav-cta">API Docs</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero hero--compact">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">Public Integration</p>
+            <h1>
+              Use path-based public endpoints without Authorization headers
+            </h1>
+            <p class="hero-subtitle">
+              Integrate TeleRealm with a direct URL pattern such as
+              <strong>/link/{botToken}/{chatID}</strong> for upload, list, get,
+              update, and delete record operations.
+            </p>
+            <div class="hero-actions">
+              <a href="/docs" class="btn btn-primary">Open Documentation</a>
+              <a href="/demo" class="btn btn-ghost">View Demo Benefits</a>
+            </div>
+          </div>
+          <div class="code-card">
+            <p class="eyebrow">Base Pattern</p>
+            <pre>
+POST   /link/{botToken}/{chatID}
+GET    /link/{botToken}/{chatID}
+GET    /link/{botToken}/{chatID}/{recordID}
+PATCH  /link/{botToken}/{chatID}/{recordID}
+DELETE /link/{botToken}/{chatID}/{recordID}</pre
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-head">
+          <p class="eyebrow">Integration Flow</p>
+          <h2>How users integrate the public API</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <h3>1. Prepare bot token</h3>
+            <p>
+              Create a bot with BotFather and copy the token into the path
+              parameter.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>2. Choose chat ID</h3>
+            <p>
+              Use your private chat, group, or channel ID where the bot can post
+              files.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>3. Call CRUD endpoints</h3>
+            <p>
+              Upload files, read records, update metadata, and delete records by
+              record ID.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>TeleRealm Public API</strong>
+        <p>Path-based integration for quick adoption.</p>
+      </div>
+      <p>Copyright 2026 TeleRealm</p>
+    </footer>
+    <script src="/static/app.js?v=20260315"></script>
+  </body>
+</html>

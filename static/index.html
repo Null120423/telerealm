@@ -5,73 +5,285 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TeleRealm - File CDN</title>
-    <link rel="stylesheet" href="/static/style.css" />
+    <title>TeleRealm CDN | Telegram-Powered File Delivery</title>
+    <link rel="stylesheet" href="/static/style.css?v=20260315" />
   </head>
   <body>
-    <div class="container">
-      <header>
-        <h1>📡 TeleRealm CDN</h1>
-        <p>Upload files to Telegram cloud storage</p>
-      </header>
-
-      <div class="config-section">
-        <h3>Configuration</h3>
-        <div class="form-group">
-          <label for="botToken">Bot Token:</label>
-          <input
-            type="text"
-            id="botToken"
-            placeholder="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh" />
-        </div>
-        <div class="form-group">
-          <label for="chatId">Chat ID:</label>
-          <input type="text" id="chatId" placeholder="123456789" />
-        </div>
-        <button onclick="saveConfig()" class="btn-save">Save Config</button>
+    <div class="page-bg"></div>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a href="#" class="brand">TeleRealm</a>
+        <nav class="main-nav">
+          <a href="#features">Features</a>
+          <a href="/upload">Upload</a>
+          <a href="/public-api">Public API</a>
+          <a href="/demo">Demo</a>
+          <a href="/docs">Docs</a>
+          <a href="#faq">FAQ</a>
+        </nav>
+        <a href="/upload" class="nav-cta">Try Upload</a>
       </div>
+    </header>
 
-      <div class="upload-section">
-        <div id="dropZone" class="drop-zone">
-          <div class="drop-zone-content">
-            <svg
-              width="64"
-              height="64"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-              <polyline points="17 8 12 3 7 8"></polyline>
-              <line x1="12" y1="3" x2="12" y2="15"></line>
-            </svg>
-            <h3>Drag & Drop Files Here</h3>
-            <p>or</p>
-            <label for="fileInput" class="btn-select">Select Files</label>
-            <input type="file" id="fileInput" multiple hidden />
-            <p class="hint">Multiple files supported</p>
+    <main>
+      <section class="hero">
+        <div class="hero-inner reveal">
+          <div class="hero-copy">
+            <p class="eyebrow">Studying Online Is Now Much Easier</p>
+            <h1>Build a Beautiful CDN Layer on Top of Telegram Storage</h1>
+            <p class="hero-subtitle">
+              Upload once, share secure links instantly, and manage file
+              delivery from one clean dashboard.
+            </p>
+            <div class="hero-actions">
+              <a href="/upload" class="btn btn-primary">Get Started</a>
+              <a href="#features" class="btn btn-ghost">Watch How It Works</a>
+            </div>
+            <div class="hero-stats">
+              <article>
+                <strong>2.4M+</strong>
+                <span>Files served</span>
+              </article>
+              <article>
+                <strong>15.8K</strong>
+                <span>Active links</span>
+              </article>
+              <article>
+                <strong>99.9%</strong>
+                <span>Availability</span>
+              </article>
+            </div>
+          </div>
+          <div class="hero-visual" aria-hidden="true">
+            <div class="visual-card visual-main">
+              <p>Secure file delivery</p>
+              <h3>Instant share link generated</h3>
+              <span>/drive/cf8f0f...</span>
+            </div>
+            <div class="visual-card visual-float float-one">API Ready</div>
+            <div class="visual-card visual-float float-two">Token Safe</div>
+            <div class="orb orb-one"></div>
+            <div class="orb orb-two"></div>
           </div>
         </div>
+      </section>
 
-        <div id="selectedFiles" class="selected-files"></div>
+      <section class="trusted reveal">
+        <p>Trusted by teams integrating lightweight media delivery</p>
+        <div class="logo-row">
+          <span>Google</span>
+          <span>Netflix</span>
+          <span>Airbnb</span>
+          <span>Amazon</span>
+          <span>Grab</span>
+        </div>
+      </section>
 
-        <button
-          id="uploadBtn"
-          class="btn-upload"
-          onclick="uploadFiles()"
-          disabled>
-          Upload Files
-        </button>
+      <section id="features" class="section reveal">
+        <div class="section-head">
+          <p class="eyebrow">All-In-One Cloud Software</p>
+          <h2>Everything You Need for Telegram-Based CDN</h2>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <h3>Online Billing & Contracts</h3>
+            <p>
+              Track usage and keep every generated link organized with clear
+              ownership.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>Easy Scheduling & Monitoring</h3>
+            <p>
+              Monitor uploads and keep delivery stable with a simple dashboard
+              flow.
+            </p>
+          </article>
+          <article class="feature-card">
+            <h3>Customer Tracking</h3>
+            <p>
+              Review shared links and understand access patterns for each file.
+            </p>
+          </article>
+        </div>
+      </section>
 
-        <div id="uploadProgress" class="upload-progress"></div>
+      <section class="split-section reveal">
+        <div class="split-image"></div>
+        <div class="split-copy">
+          <p class="eyebrow">In Physical Classrooms, You Can Do It Here</p>
+          <h2>Give Learners Fast, Reliable Access to Course Assets</h2>
+          <p>
+            TeleRealm converts Telegram bot storage into a practical CDN service
+            for docs, images, and downloadable course materials.
+          </p>
+          <a href="/upload" class="text-link">Open upload workspace</a>
+        </div>
+      </section>
+
+      <section id="studio" class="studio section reveal">
+        <div class="section-head">
+          <p class="eyebrow">Dedicated Workspace</p>
+          <h2>Use A Separate Page For Upload Operations</h2>
+          <p class="workspace-subtitle">
+            Landing page stays clean for product overview. All upload actions,
+            local bot config, and local link history now live in a dedicated
+            workspace page.
+          </p>
+        </div>
+
+        <div class="workspace-cta-grid">
+          <article class="workspace-card panel">
+            <h3>Upload Workspace</h3>
+            <p>
+              Open a focused page built specifically for drag-and-drop uploads,
+              local config storage, and secure link management.
+            </p>
+            <a href="/upload" class="btn btn-primary">Open /upload</a>
+          </article>
+
+          <article class="workspace-card panel">
+            <h3>What Moves There</h3>
+            <p>
+              Bot token, chat id, uploaded image previews, recent secure links,
+              and local-storage warning are all handled separately from this
+              landing page.
+            </p>
+            <a href="/upload" class="btn btn-ghost">Go To Upload Page</a>
+          </article>
+        </div>
+      </section>
+
+      <section id="faq" class="section faq reveal">
+        <div class="section-head">
+          <p class="eyebrow">Frequently Asked Questions</p>
+          <h2>Everything You Need to Start Fast</h2>
+        </div>
+        <div class="faq-list">
+          <article>
+            <h3>How does upload work?</h3>
+            <p>
+              Upload actions now happen on the dedicated
+              <strong>/upload</strong>
+              page, where TeleRealm sends files to your bot chat and returns
+              secure download links.
+            </p>
+          </article>
+          <article>
+            <h3>Can I use my own frontend?</h3>
+            <p>
+              Yes. Every feature is available by API, so you can integrate with
+              any client.
+            </p>
+          </article>
+          <article>
+            <h3>Is the bot token safe?</h3>
+            <p>
+              Client requests pass through bearer auth and links are encrypted
+              before sharing. Local storage on the upload page should only be
+              used on trusted devices.
+            </p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>TeleRealm CDN</strong>
+        <p>Telegram-powered content delivery for lean teams.</p>
       </div>
+      <p>Copyright 2026 TeleRealm</p>
+    </footer>
 
-      <div id="uploadedFiles" class="uploaded-files">
-        <h3>Uploaded Files</h3>
-        <div id="filesList" class="files-list"></div>
-      </div>
+    <button
+      id="guideFab"
+      class="guide-fab"
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls="guideModal">
+      Setup Guide
+    </button>
+
+    <div
+      id="guideModal"
+      class="guide-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="guideTitle"
+      hidden>
+      <div class="guide-modal__backdrop" data-close-guide="true"></div>
+      <section class="guide-modal__panel">
+        <header class="guide-modal__header">
+          <h2 id="guideTitle">Step-by-step: Get Bot Token & Access Token</h2>
+          <button
+            id="guideClose"
+            class="guide-close"
+            type="button"
+            aria-label="Close guide">
+            x
+          </button>
+        </header>
+
+        <div class="guide-modal__body">
+          <ol class="guide-steps">
+            <li>
+              <h3>Create Telegram bot</h3>
+              <p>
+                Open Telegram and search <strong>BotFather</strong>. Send
+                <strong>/newbot</strong>, set bot name and username.
+              </p>
+            </li>
+            <li>
+              <h3>Copy bot token</h3>
+              <p>
+                BotFather will return a token like
+                <strong>123456789:ABC...</strong>. This is your TeleRealm
+                <strong>Access Token</strong>.
+              </p>
+            </li>
+            <li>
+              <h3>Start chat with your bot</h3>
+              <p>
+                Open your bot profile, press <strong>Start</strong>, and send a
+                test message. If using group/channel, add bot and grant rights.
+              </p>
+            </li>
+            <li>
+              <h3>Get Chat ID</h3>
+              <p>Use this URL in browser (replace {TOKEN}):</p>
+              <pre>https://api.telegram.org/bot{TOKEN}/getUpdates</pre>
+              <p>Look for <strong>chat.id</strong> in response JSON.</p>
+            </li>
+            <li>
+              <h3>Use in TeleRealm Upload Workspace</h3>
+              <p>
+                Paste bot token into <strong>Bot Token</strong>, paste
+                <strong>chat.id</strong> into <strong>Chat ID</strong>, then go
+                to <strong>/upload</strong> and click
+                <strong>Save Local Config</strong>.
+              </p>
+            </li>
+            <li>
+              <h3>Upload and get secure link</h3>
+              <p>
+                Select file, click <strong>Upload Files</strong>, then copy
+                <strong>secure_url</strong> to share.
+              </p>
+            </li>
+          </ol>
+
+          <div class="guide-callout">
+            <h3>Security Note</h3>
+            <p>
+              Never expose your bot token in public frontend production apps.
+              Use backend proxy or rotate token immediately if leaked.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=20260315"></script>
   </body>
 </html>

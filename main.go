@@ -29,12 +29,38 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		c.File("static/index.html")
 	})
+	r.GET("/upload", func(c *gin.Context) {
+		c.File("static/upload.html")
+	})
+	r.GET("/public-api", func(c *gin.Context) {
+		c.File("static/public-api.html")
+	})
+	r.GET("/demo", func(c *gin.Context) {
+		c.File("static/demo.html")
+	})
+	r.GET("/docs", func(c *gin.Context) {
+		c.File("static/docs.html")
+	})
+
+	publicLink := r.Group("/link/:botToken/:chatID")
+	{
+		publicLink.POST("", h.PublicCreateLinkRecord)
+		publicLink.GET("", h.PublicListLinkRecords)
+		publicLink.GET("/:id", h.PublicGetLinkRecord)
+		publicLink.PATCH("/:id", h.PublicUpdateLinkRecord)
+		publicLink.DELETE("/:id", h.PublicDeleteLinkRecord)
+	}
 
 	// Protected endpoints
 	auth := r.Group("/")
 	auth.Use(middleware.AuthRequired())
 	{
 		auth.POST("/send", h.SendFile)
+		auth.POST("/files", h.CreateFileRecord)
+		auth.GET("/files", h.ListFileRecords)
+		auth.GET("/files/:id", h.GetFileRecord)
+		auth.PATCH("/files/:id", h.UpdateFileRecord)
+		auth.DELETE("/files/:id", h.DeleteFileRecord)
 		auth.GET("/url", h.GetFileURL)
 		auth.GET("/info", h.GetFileInfo)
 		auth.GET("/verify", h.CheckBotAndChat)

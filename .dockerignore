@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+.env*
+docker-compose.yml
+README.md
+LICENSE
+postman_collection.json
+*.md
+tmp/
+dist/
+bin/
+node_modules/

@@ -1,0 +1,132 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TeleRealm API Documentation</title>
+    <link rel="stylesheet" href="/static/style.css?v=20260315" />
+  </head>
+  <body>
+    <div class="page-bg"></div>
+    <header class="site-header">
+      <div class="nav-shell">
+        <a href="/" class="brand">TeleRealm</a>
+        <nav class="main-nav">
+          <a href="/public-api">Public API</a>
+          <a href="/demo">Demo</a>
+          <a href="/upload">Upload</a>
+        </nav>
+        <a href="/public-api" class="nav-cta">Public API</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero hero--compact">
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow">API Documentation</p>
+            <h1>
+              Protected API and public `/link/{botToken}/{chatID}` integration
+            </h1>
+            <p class="hero-subtitle">
+              TeleRealm supports both bearer-token protected endpoints and a
+              path-based public API for scoped CRUD file records.
+            </p>
+          </div>
+          <div class="code-card">
+            <p class="eyebrow">Tip</p>
+            <pre>
+Public path parameters expose your bot token in the URL.
+Use this mode only for trusted or internal integrations.
+Prefer protected endpoints for production-grade security.</pre
+            >
+          </div>
+        </div>
+      </section>
+
+      <section class="section docs-layout">
+        <article class="docs-card panel">
+          <h2>Protected API</h2>
+          <pre>
+POST /send
+Authorization: Bearer &lt;botToken&gt;
+FormData: chat_id, document
+
+GET /url?file_id=&lt;fileID&gt;
+GET /info?file_id=&lt;fileID&gt;
+GET /verify?chat_id=&lt;chatID&gt;</pre
+          >
+        </article>
+
+        <article class="docs-card panel">
+          <h2>Public CRUD API</h2>
+          <pre>
+POST   /link/{botToken}/{chatID}
+GET    /link/{botToken}/{chatID}
+GET    /link/{botToken}/{chatID}/{recordID}
+PATCH  /link/{botToken}/{chatID}/{recordID}
+DELETE /link/{botToken}/{chatID}/{recordID}</pre
+          >
+        </article>
+
+        <article class="docs-card panel">
+          <h2>Upload Example</h2>
+          <pre>
+curl -X POST \
+  -F "document=@/tmp/photo.png" \
+  http://localhost:7777/link/123456:ABCDEF/123456789</pre
+          >
+        </article>
+
+        <article class="docs-card panel">
+          <h2>Update Example</h2>
+          <pre>
+curl -X PATCH \
+  -H "Content-Type: application/json" \
+  -d '{"original_name":"hero-banner.png"}' \
+  http://localhost:7777/link/123456:ABCDEF/123456789/&lt;recordID&gt;</pre
+          >
+        </article>
+
+        <article class="docs-card panel">
+          <h2>Delete Behavior</h2>
+          <p>
+            Delete removes TeleRealm's in-memory record only. It does not remove
+            the underlying Telegram file from storage.
+          </p>
+        </article>
+
+        <article class="docs-card panel">
+          <h2>Response Shape</h2>
+          <pre>
+{
+  "success": true,
+  "message": "Public upload completed successfully!",
+  "data": {
+    "record_id": "uuid",
+    "file_id": "telegram-file-id",
+    "chat_id": "123456789",
+    "url": "https://api.telegram.org/file/...",
+    "secure_url": "http://localhost:7777/drive/...",
+    "bytes": 12345,
+    "format": "png",
+    "original_name": "photo.png"
+  }
+}</pre
+          >
+        </article>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div>
+        <strong>TeleRealm Docs</strong>
+        <p>Integration references for frontend and backend consumers.</p>
+      </div>
+      <p>Copyright 2026 TeleRealm</p>
+    </footer>
+    <script src="/static/app.js?v=20260315"></script>
+  </body>
+</html>

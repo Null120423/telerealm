@@ -12,76 +12,76 @@ import (
 	"strings"
 )
 
-// EncryptFileInfo mã hóa bot token và file ID thành một chuỗi an toàn
+// EncryptFileInfo encrypts the bot token and file ID into a URL-safe string.
 func EncryptFileInfo(botToken, fileID string) (string, error) {
 	secretKey := []byte(getEncryptionKey())
 
-	// Kết hợp thông tin với ký tự phân cách
+	// Combine the values with a delimiter.
 	plaintext := []byte(fmt.Sprintf("%s|%s", botToken, fileID))
 
-	// Tạo block cipher
+	// Create the cipher block.
 	block, err := aes.NewCipher(secretKey)
 	if err != nil {
 		return "", err
 	}
 
-	// Tạo GCM (Galois/Counter Mode)
+	// Create a GCM cipher mode.
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", err
 	}
 
-	// Tạo nonce
+	// Generate a nonce.
 	nonce := make([]byte, aesGCM.NonceSize())
 	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", err
 	}
 
-	// Mã hóa
+	// Encrypt the plaintext.
 	ciphertext := aesGCM.Seal(nonce, nonce, plaintext, nil)
 
-	// Mã hóa base64 để sử dụng an toàn trong URL
+	// Encode as base64 for safe URL transport.
 	return base64.URLEncoding.EncodeToString(ciphertext), nil
 }
 
-// DecryptFileInfo giải mã chuỗi đã mã hóa để lấy bot token và file ID
+// DecryptFileInfo decrypts the encoded string and returns bot token and file ID.
 func DecryptFileInfo(encryptedData string) (botToken, fileID string, err error) {
 	secretKey := []byte(getEncryptionKey())
 
-	// Giải mã base64
+	// Decode the base64 payload.
 	ciphertext, err := base64.URLEncoding.DecodeString(encryptedData)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Tạo block cipher
+	// Create the cipher block.
 	block, err := aes.NewCipher(secretKey)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Tạo GCM
+	// Create a GCM cipher mode.
 	aesGCM, err := cipher.NewGCM(block)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Xác định nonce size
+	// Determine the nonce size.
 	nonceSize := aesGCM.NonceSize()
 	if len(ciphertext) < nonceSize {
 		return "", "", errors.New("ciphertext too short")
 	}
 
-	// Trích xuất nonce và ciphertext
+	// Split nonce and ciphertext.
 	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
 
-	// Giải mã
+	// Decrypt the payload.
 	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return "", "", err
 	}
 
-	// Tách bot token và file ID
+	// Extract bot token and file ID.
 	parts := strings.Split(string(plaintext), "|")
 	if len(parts) != 2 {
 		return "", "", errors.New("invalid data format after decryption")
@@ -90,16 +90,16 @@ func DecryptFileInfo(encryptedData string) (botToken, fileID string, err error) 
 	return parts[0], parts[1], nil
 }
 
-// getEncryptionKey lấy key từ biến môi trường hoặc sử dụng key mặc định
+// getEncryptionKey loads the key from the environment or falls back to a default.
 func getEncryptionKey() string {
 	key := os.Getenv("ENCRYPTION_KEY")
 	if key == "" {
-		// Tạo một key mặc định với độ dài 32 bytes (256 bits) cho AES-256
-		// Trong môi trường production, đảm bảo sử dụng biến môi trường
+		// Use a default 32-byte key for AES-256 in local development.
+		// In production, always provide the key via environment variable.
 		key = "telerealm-default-encryption-key-32b"
 	}
 
-	// Đảm bảo key có đúng độ dài cho AES-256
+	// Ensure the key has the correct length for AES-256.
 	if len(key) < 32 {
 		key = key + strings.Repeat("0", 32-len(key))
 	}

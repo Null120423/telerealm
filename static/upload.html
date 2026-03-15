@@ -1,0 +1,315 @@
+<!-- @format -->
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TeleRealm Upload Workspace</title>
+    <link rel="stylesheet" href="/static/style.css?v=20260315" />
+  </head>
+  <body class="upload-page-body">
+    <div class="page-bg"></div>
+
+    <header class="upload-topbar">
+      <a href="/" class="brand">TeleRealm</a>
+      <div class="upload-topbar__actions">
+        <a href="/public-api" class="btn btn-ghost">Public API</a>
+        <a href="/demo" class="btn btn-ghost">Demo</a>
+        <a href="/docs" class="btn btn-ghost">Docs</a>
+        <a href="/" class="btn btn-ghost">Back To Landing</a>
+      </div>
+    </header>
+
+    <main class="upload-page">
+      <section class="upload-hero panel reveal in-view">
+        <div>
+          <p class="eyebrow">Dedicated Upload Workspace</p>
+          <h1>
+            Upload files, keep bot config locally, and manage links faster
+          </h1>
+          <p class="hero-subtitle">
+            This page stores your Bot Token, Chat ID, and uploaded link history
+            in your browser localStorage for temporary convenience on this
+            device.
+          </p>
+        </div>
+        <div class="upload-hero__stats">
+          <article>
+            <strong>Local Config</strong>
+            <span>Bot token and chat id stay in this browser only.</span>
+          </article>
+          <article>
+            <strong>Uploaded History</strong>
+            <span>Recent uploaded files and links are cached locally.</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel upload-video-section reveal in-view">
+        <div class="upload-video-section__copy">
+          <p class="eyebrow">Video Guide</p>
+          <h2>Watch the setup flow before uploading</h2>
+          <p class="hero-subtitle">
+            This section is reserved for your onboarding video. Once you provide
+            the URL, users will be able to watch the full setup flow directly on
+            this page before configuring the bot and uploading files.
+          </p>
+          <div class="upload-video-checklist">
+            <article>
+              <strong>Step 1</strong>
+              <span>Create a Telegram bot with BotFather.</span>
+            </article>
+            <article>
+              <strong>Step 2</strong>
+              <span>Find your bot token and chat ID.</span>
+            </article>
+            <article>
+              <strong>Step 3</strong>
+              <span>Save local config and start uploading files.</span>
+            </article>
+          </div>
+        </div>
+
+        <div class="upload-video-section__player">
+          <div class="video-frame-shell video-frame-shell--inline">
+            <iframe
+              id="setupVideoInlineFrame"
+              class="video-frame"
+              title="TeleRealm setup video inline"
+              src=""
+              allow="
+                accelerometer;
+                autoplay;
+                clipboard-write;
+                encrypted-media;
+                gyroscope;
+                picture-in-picture;
+                web-share;
+              "
+              allowfullscreen></iframe>
+          </div>
+          <div id="setupVideoInlinePlaceholder" class="video-placeholder">
+            <h3>Inline setup video is not configured yet</h3>
+            <p>
+              Add your future video URL to
+              <strong>data-video-url</strong> on the
+              <strong>#setupVideoFab</strong> button and this inline section
+              will render it automatically.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="upload-layout">
+        <aside class="upload-sidebar panel">
+          <div class="section-head left compact">
+            <p class="eyebrow">Quick Setup</p>
+            <h2>Telegram bot configuration</h2>
+          </div>
+
+          <div class="form-group">
+            <label for="botToken">Bot Token</label>
+            <input
+              type="text"
+              id="botToken"
+              placeholder="123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefgh" />
+          </div>
+
+          <div class="form-group">
+            <label for="chatId">Chat ID</label>
+            <input type="text" id="chatId" placeholder="123456789 or -100..." />
+          </div>
+
+          <button onclick="saveConfig()" class="btn btn-primary btn-full">
+            Save Local Config
+          </button>
+
+          <div class="upload-tip-list">
+            <article>
+              <h3>Bot Token</h3>
+              <p>Get this from BotFather after creating your Telegram bot.</p>
+            </article>
+            <article>
+              <h3>Chat ID</h3>
+              <p>
+                Use <strong>getUpdates</strong> or add your bot to group/channel
+                and inspect <strong>chat.id</strong>.
+              </p>
+            </article>
+            <article>
+              <h3>Temp Storage</h3>
+              <p>
+                Data is stored only in this browser until you clear site data or
+                localStorage.
+              </p>
+            </article>
+          </div>
+        </aside>
+
+        <section class="upload-main">
+          <div class="panel upload-panel">
+            <div class="section-head left compact">
+              <p class="eyebrow">Upload Files</p>
+              <h2>Drag, drop, upload, copy link</h2>
+            </div>
+
+            <div id="dropZone" class="drop-zone upload-drop-zone">
+              <div class="drop-zone-content">
+                <h3>Drop files here</h3>
+                <p>Images, documents, videos, archives and more</p>
+                <label for="fileInput" class="btn btn-secondary"
+                  >Select Files</label
+                >
+                <input type="file" id="fileInput" multiple hidden />
+                <p class="hint">
+                  Multiple files supported. History is cached locally.
+                </p>
+              </div>
+            </div>
+
+            <div id="selectedFiles" class="selected-files"></div>
+
+            <button
+              id="uploadBtn"
+              class="btn btn-primary btn-full upload-submit"
+              onclick="uploadFiles()"
+              disabled>
+              Upload Files
+            </button>
+
+            <div id="uploadProgress" class="upload-progress"></div>
+          </div>
+
+          <div id="uploadedFiles" class="uploaded-files panel upload-history">
+            <div class="upload-history__header">
+              <div>
+                <p class="eyebrow">Local History</p>
+                <h2>Uploaded files and secure links</h2>
+              </div>
+              <button
+                id="clearLocalDataBtn"
+                class="btn btn-ghost"
+                type="button">
+                Clear Local Data
+              </button>
+            </div>
+            <div id="filesList" class="files-list files-list--gallery"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <button
+      id="localNoticeFab"
+      class="storage-fab"
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls="localNoticeModal">
+      Local Storage Notice
+    </button>
+
+    <button
+      id="setupVideoFab"
+      class="video-fab"
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls="setupVideoModal"
+      data-video-url="">
+      Setup Video
+    </button>
+
+    <div
+      id="localNoticeModal"
+      class="storage-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="localNoticeTitle"
+      hidden>
+      <div class="storage-modal__backdrop" data-close-storage="true"></div>
+      <section class="storage-modal__panel">
+        <header class="storage-modal__header">
+          <h2 id="localNoticeTitle">Important note about browser local data</h2>
+          <button
+            id="localNoticeClose"
+            class="guide-close"
+            type="button"
+            aria-label="Close local storage notice">
+            x
+          </button>
+        </header>
+        <div class="storage-modal__body">
+          <ul class="storage-note-list">
+            <li>
+              Bot Token and Chat ID are stored in the browser's
+              <strong>localStorage</strong> so you can reuse them more quickly.
+            </li>
+            <li>
+              Uploaded file history and generated <strong>secure links</strong>
+              are also stored locally on the current device.
+            </li>
+            <li>
+              If you are using a shared or public computer, click
+              <strong>Clear Local Data</strong> after you finish.
+            </li>
+            <li>
+              This local data is not encrypted at the frontend layer, so it
+              should not be used on public or untrusted devices.
+            </li>
+          </ul>
+        </div>
+      </section>
+    </div>
+
+    <div
+      id="setupVideoModal"
+      class="video-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="setupVideoTitle"
+      hidden>
+      <div class="video-modal__backdrop" data-close-video="true"></div>
+      <section class="video-modal__panel">
+        <header class="video-modal__header">
+          <h2 id="setupVideoTitle">Setup video guide</h2>
+          <button
+            id="setupVideoClose"
+            class="guide-close"
+            type="button"
+            aria-label="Close setup video">
+            x
+          </button>
+        </header>
+        <div class="video-modal__body">
+          <div class="video-frame-shell">
+            <iframe
+              id="setupVideoFrame"
+              class="video-frame"
+              title="TeleRealm setup video"
+              src=""
+              allow="
+                accelerometer;
+                autoplay;
+                clipboard-write;
+                encrypted-media;
+                gyroscope;
+                picture-in-picture;
+                web-share;
+              "
+              allowfullscreen></iframe>
+          </div>
+          <div id="setupVideoPlaceholder" class="video-placeholder">
+            <h3>Video URL not added yet</h3>
+            <p>
+              Add your video URL later in
+              <strong>data-video-url</strong> on the
+              <strong>#setupVideoFab</strong> button inside this page.
+            </p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="/static/app.js?v=20260315"></script>
+  </body>
+</html>

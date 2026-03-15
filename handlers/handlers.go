@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"telerealm/models"
 	"telerealm/services"
 	"telerealm/utils"
@@ -19,7 +21,7 @@ type Handlers struct {
 }
 
 var (
-	mu sync.Mutex // Giữ lại nếu bạn có biến dùng chung khác cần mutual exclusion
+	mu sync.Mutex // Keep this if shared mutable state is added later.
 )
 
 func NewHandlers(service services.FileService) *Handlers {
@@ -32,9 +34,253 @@ func (h *Handlers) Ping(c *gin.Context) {
 	})
 }
 
+func buildSecureURL(c *gin.Context, botToken, fileID string) (string, error) {
+	scheme := c.Request.Header.Get("X-Forwarded-Proto")
+	if scheme == "" {
+		scheme = "http"
+	}
+
+	encryptedToken, err := utils.EncryptFileInfo(botToken, fileID)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%s://%s/drive/%s", scheme, c.Request.Host, encryptedToken), nil
+}
+
+func (h *Handlers) uploadAndCreateRecord(c *gin.Context, botToken, chatID string) (models.FileRecord, int, error) {
+	if strings.TrimSpace(chatID) == "" {
+		return models.FileRecord{}, http.StatusBadRequest, fmt.Errorf("chat_id is required")
+	}
+
+	fileHeader, err := c.FormFile("document")
+	if err != nil {
+		return models.FileRecord{}, http.StatusBadRequest, fmt.Errorf("document is required")
+	}
+
+	file, err := fileHeader.Open()
+	if err != nil {
+		return models.FileRecord{}, http.StatusInternalServerError, fmt.Errorf("failed to open file")
+	}
+	defer file.Close()
+
+	fileID, err := h.service.SendFile(botToken, chatID, file, fileHeader.Filename)
+	if err != nil {
+		return models.FileRecord{}, http.StatusInternalServerError, fmt.Errorf("failed to send document: %v", err)
+	}
+
+	fileURL, fileSize, err := h.service.GetFileInfo(botToken, fileID)
+	if err != nil {
+		return models.FileRecord{}, http.StatusInternalServerError, fmt.Errorf("failed to get file info: %v", err)
+	}
+
+	secureURL, err := buildSecureURL(c, botToken, fileID)
+	if err != nil {
+		return models.FileRecord{}, http.StatusInternalServerError, fmt.Errorf("failed to create secure URL")
+	}
+
+	fileExt := filepath.Ext(fileHeader.Filename)
+	if fileExt != "" {
+		fileExt = fileExt[1:]
+	}
+
+	record := models.FileRecord{
+		BotToken:     botToken,
+		RecordID:     uuid.New().String(),
+		FileID:       fileID,
+		ChatID:       chatID,
+		URL:          fileURL,
+		SecureURL:    secureURL,
+		Bytes:        fileSize,
+		Format:       fileExt,
+		OriginalName: fileHeader.Filename,
+	}
+
+	return h.service.CreateFileRecord(record), http.StatusCreated, nil
+}
+
+func (h *Handlers) PublicCreateLinkRecord(c *gin.Context) {
+	botToken := c.Param("botToken")
+	chatID := c.Param("chatID")
+
+	record, status, err := h.uploadAndCreateRecord(c, botToken, chatID)
+	if err != nil {
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, models.Response{
+		Success: true,
+		Message: "Public upload completed successfully!",
+		Data:    record,
+	})
+}
+
+func (h *Handlers) PublicListLinkRecords(c *gin.Context) {
+	botToken := c.Param("botToken")
+	chatID := c.Param("chatID")
+
+	records := h.service.ListFileRecordsByScope(botToken, chatID)
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "Scoped file records retrieved successfully!",
+		Data:    records,
+	})
+}
+
+func (h *Handlers) PublicGetLinkRecord(c *gin.Context) {
+	botToken := c.Param("botToken")
+	chatID := c.Param("chatID")
+	recordID := c.Param("id")
+
+	record, exists := h.service.GetScopedFileRecord(botToken, chatID, recordID)
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file record not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "Scoped file record retrieved successfully!",
+		Data:    record,
+	})
+}
+
+func (h *Handlers) PublicUpdateLinkRecord(c *gin.Context) {
+	botToken := c.Param("botToken")
+	chatID := c.Param("chatID")
+	recordID := c.Param("id")
+
+	var req models.FileRecordUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		return
+	}
+
+	if req.ChatID == nil && req.OriginalName == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one updatable field is required"})
+		return
+	}
+
+	record, exists := h.service.UpdateScopedFileRecord(botToken, chatID, recordID, req)
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file record not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "Scoped file record updated successfully!",
+		Data:    record,
+	})
+}
+
+func (h *Handlers) PublicDeleteLinkRecord(c *gin.Context) {
+	botToken := c.Param("botToken")
+	chatID := c.Param("chatID")
+	recordID := c.Param("id")
+
+	if !h.service.DeleteScopedFileRecord(botToken, chatID, recordID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file record not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "Scoped file record deleted successfully!",
+		Data:    gin.H{"record_id": recordID},
+	})
+}
+
+func (h *Handlers) CreateFileRecord(c *gin.Context) {
+	botToken := c.MustGet("bot_token").(string)
+	chatID := c.PostForm("chat_id")
+	created, status, err := h.uploadAndCreateRecord(c, botToken, chatID)
+	if err != nil {
+		c.JSON(status, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(status, models.Response{
+		Success: true,
+		Message: "Upload and create file record successfully!",
+		Data:    created,
+	})
+}
+
+func (h *Handlers) ListFileRecords(c *gin.Context) {
+	records := h.service.ListFileRecords()
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "File records retrieved successfully!",
+		Data:    records,
+	})
+}
+
+func (h *Handlers) GetFileRecord(c *gin.Context) {
+	recordID := c.Param("id")
+	record, exists := h.service.GetFileRecord(recordID)
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file record not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "File record retrieved successfully!",
+		Data:    record,
+	})
+}
+
+func (h *Handlers) UpdateFileRecord(c *gin.Context) {
+	recordID := c.Param("id")
+
+	var req models.FileRecordUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		return
+	}
+
+	if req.ChatID == nil && req.OriginalName == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "at least one updatable field is required"})
+		return
+	}
+
+	record, exists := h.service.UpdateFileRecord(recordID, req)
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file record not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "File record updated successfully!",
+		Data:    record,
+	})
+}
+
+func (h *Handlers) DeleteFileRecord(c *gin.Context) {
+	recordID := c.Param("id")
+	if !h.service.DeleteFileRecord(recordID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file record not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.Response{
+		Success: true,
+		Message: "File record deleted successfully!",
+		Data:    gin.H{"record_id": recordID},
+	})
+}
+
 func (h *Handlers) SendFile(c *gin.Context) {
 	botToken := c.MustGet("bot_token").(string)
 	chatID := c.PostForm("chat_id")
+
+	if strings.TrimSpace(chatID) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "chat_id is required"})
+		return
+	}
 
 	var fileID string
 	var fileURL string
@@ -68,7 +314,17 @@ func (h *Handlers) SendFile(c *gin.Context) {
 			fileExt = fileExt[1:] // Remove the leading dot
 		}
 	} else {
+		if !errors.Is(err, http.ErrMissingFile) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid document field"})
+			return
+		}
+
 		fileURL = c.PostForm("document")
+		if strings.TrimSpace(fileURL) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "document is required"})
+			return
+		}
+
 		fileSize = 0
 
 		isFile, contentType, contentLength, err := isURLFile(fileURL)
@@ -130,7 +386,7 @@ func (h *Handlers) GetFileURL(c *gin.Context) {
 		scheme = "http"
 	}
 
-	// Sử dụng phương pháp mã hóa mới
+	// Use the current encryption method for secure links.
 	encryptedToken, err := utils.EncryptFileInfo(botToken, fileID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create secure URL"})
@@ -179,17 +435,16 @@ func (h *Handlers) DownloadFile(c *gin.Context) {
 		contentType = "application/octet-stream"
 	}
 
-	// Lấy phần mở rộng từ URL gốc
+	// Read the extension from the source URL.
 	fileExt := filepath.Ext(fileURL)
 	if fileExt != "" {
-		fileExt = fileExt[1:] // Bỏ dấu chấm ở đầu
+		fileExt = fileExt[1:] // Remove the leading dot.
 	} else {
-		// Nếu URL không có phần mở rộng, thử lấy từ content type
+		// If the URL has no extension, derive one from the content type.
 		fileExt = getExtensionFromContentType(contentType)
 	}
 
-	// Tạo tên file ngắn gọn
-	// Lấy 8 ký tự đầu của fileID để đặt tên file
+	// Generate a short file name from the first 8 characters of fileID.
 	shortID := fileID
 	if len(fileID) > 8 {
 		shortID = fileID[:8]
@@ -229,7 +484,7 @@ func (h *Handlers) GetFileInfo(c *gin.Context) {
 		fileExt = fileExt[1:] // Remove the leading dot
 	}
 
-	// Sử dụng phương pháp mã hóa mới
+	// Use the current encryption method for secure links.
 	encryptedToken, err := utils.EncryptFileInfo(botToken, fileID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create secure URL"})
@@ -254,7 +509,7 @@ func (h *Handlers) GetFileInfo(c *gin.Context) {
 }
 
 func getExtensionFromContentType(contentType string) string {
-	// Loại bỏ các tham số như charset
+	// Strip parameters such as charset.
 	if idx := strings.Index(contentType, ";"); idx != -1 {
 		contentType = contentType[:idx]
 	}
