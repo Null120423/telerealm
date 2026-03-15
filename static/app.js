@@ -312,7 +312,19 @@ function initUploadUI() {
 
   if (!dropZone || !fileInput) return;
 
-  dropZone.addEventListener("click", () => fileInput.click());
+  dropZone.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      fileInput.click();
+      return;
+    }
+
+    if (target.closest("label, input, button, a")) {
+      return;
+    }
+
+    fileInput.click();
+  });
 
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
