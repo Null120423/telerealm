@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="TeleRealm social preview">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff5e6"/>
+      <stop offset="1" stop-color="#e8f3ff"/>
+    </linearGradient>
+    <linearGradient id="pill" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fb923c"/>
+      <stop offset="1" stop-color="#2563eb"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="972" cy="142" r="148" fill="#93c5fd" fill-opacity="0.35"/>
+  <circle cx="194" cy="522" r="182" fill="#fdba74" fill-opacity="0.25"/>
+  <rect x="86" y="94" width="580" height="66" rx="33" fill="#ffffff"/>
+  <text x="126" y="138" font-family="Sora, Arial, sans-serif" font-size="34" fill="#1d4ed8" font-weight="700">Telegram-powered CDN workflow</text>
+  <text x="88" y="260" font-family="Sora, Arial, sans-serif" font-size="92" fill="#1e3a8a" font-weight="800">TeleRealm</text>
+  <text x="88" y="332" font-family="Manrope, Arial, sans-serif" font-size="44" fill="#334155" font-weight="600">Upload, secure links, public API, docs</text>
+  <rect x="88" y="396" width="406" height="86" rx="43" fill="url(#pill)"/>
+  <text x="140" y="452" font-family="Sora, Arial, sans-serif" font-size="42" fill="#ffffff" font-weight="700">telegrad.cnd</text>
+  <g transform="translate(776 202)">
+    <rect x="0" y="0" width="300" height="220" rx="36" fill="#ffffff"/>
+    <rect x="30" y="42" width="240" height="126" rx="16" fill="#dbeafe"/>
+    <path d="M150 34l58 62h-32v72h-52V96H92z" fill="#2563eb"/>
+    <circle cx="76" cy="104" r="14" fill="#60a5fa"/>
+    <circle cx="226" cy="104" r="14" fill="#60a5fa"/>
+    <rect x="74" y="182" width="152" height="20" rx="10" fill="#93c5fd"/>
+  </g>
+</svg>

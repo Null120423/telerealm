@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="TeleRealm icon">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#20b8ff"/>
+      <stop offset="1" stop-color="#4158d0"/>
+    </linearGradient>
+    <linearGradient id="up" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d6ecff"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="116" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="174" fill="#0d4dbb" fill-opacity="0.32"/>
+  <path d="M256 96l108 116h-60v128h-96V212h-60z" fill="url(#up)"/>
+  <rect x="124" y="362" width="264" height="58" rx="29" fill="#fff" fill-opacity="0.92"/>
+  <text x="256" y="401" text-anchor="middle" font-family="Sora, Arial, sans-serif" font-size="42" font-weight="700" fill="#2563eb">TR</text>
+</svg>

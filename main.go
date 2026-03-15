@@ -41,6 +41,12 @@ func main() {
 	r.GET("/docs", func(c *gin.Context) {
 		c.File("static/docs.html")
 	})
+	r.GET("/robots.txt", func(c *gin.Context) {
+		c.File("static/robots.txt")
+	})
+	r.GET("/sitemap.xml", func(c *gin.Context) {
+		c.File("static/sitemap.xml")
+	})
 
 	publicLink := r.Group("/link/:botToken/:chatID")
 	{
